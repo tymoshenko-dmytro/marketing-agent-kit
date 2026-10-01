@@ -41,6 +41,8 @@ $PY $SK/makeindex.py --out ~/funnels/example-quiz --title "Example — quiz v1" 
 
 Result: `shots/*.png`, `INDEX.md`, `log.json` (every step with URL, headings, options), `state.json` + `last_url.txt` (for resuming).
 
+`state.json` holds the funnel's cookies and localStorage, and `log.json` / `last_url.txt` can carry the email you typed. The scripts write a `.gitignore` into the output folder that keeps these three out of git. Share `shots/` and `INDEX.md`, not the folder as a whole.
+
 ### Useful flags
 
 | Flag | Why |

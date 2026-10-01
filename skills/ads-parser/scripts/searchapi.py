@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -32,8 +33,9 @@ def _key() -> str:
     if os.path.exists(envp):
         for line in open(envp):
             k, _, val = line.strip().partition("=")
-            if k.strip() == "SEARCHAPI_KEY" and val.strip():
-                return val.strip().strip('"').strip("'")
+            val = re.split(r"(?:^|\s)#", val.strip(), maxsplit=1)[0].strip().strip('"').strip("'")   # same rule as kit.py
+            if k.strip() == "SEARCHAPI_KEY" and val:
+                return val
     raise SystemExit("SEARCHAPI_KEY not found. Add it to ~/.config/marketing-agent-kit/.env "
                      "(see connections/searchapi.md) or export it as an env var.")
 

@@ -111,3 +111,23 @@ def new_context(browser, device="iphone", locale="en-US", storage_state=None, sp
             hints["sec-ch-ua-platform"] = '"macOS"'
         cfg["extra_http_headers"] = hints
     return browser.new_context(**cfg)
+
+
+PRIVATE = ["state.json", "log.json", "last_url.txt"]
+
+
+def keep_private(base):
+    """state.json holds the funnel's cookies and localStorage; log.json and last_url.txt
+    can carry a typed email in field values and URLs. A .gitignore in the output folder
+    keeps the three out of git wherever --out points, so shots/ and INDEX.md stay
+    shareable. Existing lines are left alone; missing ones are appended."""
+    gi = os.path.join(str(base), ".gitignore")
+    text = open(gi, encoding="utf-8").read() if os.path.exists(gi) else ""
+    missing = [p for p in PRIVATE if p not in text.splitlines()]
+    if missing:
+        with open(gi, "a", encoding="utf-8") as f:
+            if text and not text.endswith("\n"):
+                f.write("\n")
+            if not text:
+                f.write("# funnel-screenshots: browser session and typed values, never commit\n")
+            f.write("".join(p + "\n" for p in missing))

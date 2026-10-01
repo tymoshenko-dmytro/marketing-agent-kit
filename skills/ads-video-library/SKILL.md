@@ -83,10 +83,11 @@ Read `references/posters.md`. In short:
 
 ## Things that cost time to learn
 
-- **The catalogue joins on `id`, never on the file name.** `id` is `<type>_<topic>_<voice>` and survives re-renders, new dates, new lengths and new versions. Ad performance joined on a file name splits one creative's history in two.
+- **The catalogue joins on `id`, never on the file name.** `id` is `<type>_<topic>_<lang>_<aspect>_<voice>` and survives re-renders, new dates, new lengths and new versions; an EN and an ES cut, or a 16x9 and a 9x16 cut, are separate ids. Ad performance joined on a file name splits one creative's history in two.
 - **Length and date are in the name, so a re-render renames the file.** The publisher retires what is in the type's folder and not in the batch — locally into `_retired/`, on Drive into the trash. Skip it with `--no-sweep` and the folder fills with older renders, all looking current.
 - **`created` is remembered for an id already in the catalogue.** Always pass `--catalog`: without it the publisher has no memory and every run stamps today.
 - **Two items with the same id or the same name is a refusal, not a warning.** Two render projects producing the same basename once shipped the wrong screen inside a card for a week.
+- **One `catalog.csv` for the whole library.** A batch replaces its own rows and leaves other types and languages alone; columns you added (spend, CTR) are kept. Rows whose files the sweep just retired get `status` = `retired`.
 - **A Sheet tab is overwritten wholesale.** The CSV is the source of truth; anything typed into the tab by hand is gone on the next run.
 - **Drive: a service account can only write to a shared drive** (it has no storage of its own), and every call against a shared drive needs `supportsAllDrives`. Details in `references/setup.md`.
 

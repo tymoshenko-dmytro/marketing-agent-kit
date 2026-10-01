@@ -9,6 +9,8 @@ Writes into --out:
     log.json              every iteration: url, headings, clickables, inputs
     state.json            cookies + localStorage, for --resume
     last_url.txt          where the run ended, for --resume and paywall.py
+    .gitignore            keeps the three files above out of git (they can hold
+                          session cookies and the typed email)
 
 It answers questions with the first plausible option, fills numeric inputs from
 --height/--weight/--goal/--age, and stops when a real payment form appears.
@@ -247,6 +249,7 @@ def main():
     base = Path(os.path.expanduser(a.out))
     out = base / "shots"
     out.mkdir(parents=True, exist_ok=True)
+    B.keep_private(base)
     state_f, url_f, log_f = base / "state.json", base / "last_url.txt", base / "log.json"
     if not a.url and not a.resume:
         ap.error("--url is required unless --resume")

@@ -14,7 +14,7 @@ intended time rather than by however much silence the API prepended.
 
 Key: env ELEVENLABS_API_KEY -> ~/.config/marketing-agent-kit/.env
 """
-import json, os, pathlib, subprocess, sys, urllib.request
+import json, os, pathlib, re, subprocess, sys, urllib.request
 
 def key():
     """ELEVENLABS_API_KEY: env var first, then the kit's keys file (connections/elevenlabs-api.md)."""
@@ -23,8 +23,8 @@ def key():
     if p.exists():
         for line in p.read_text().splitlines():
             k, _, v = line.strip().partition("=")
-            if k.strip() == "ELEVENLABS_API_KEY" and v.split(" #")[0].strip():
-                return v.split(" #")[0].strip().strip('"').strip("'")
+            v = re.split(r"(?:^|\s)#", v.strip(), maxsplit=1)[0].strip().strip('"').strip("'")   # same rule as kit.py
+            if k.strip() == "ELEVENLABS_API_KEY" and v: return v
     sys.exit("ELEVENLABS_API_KEY not found: add it to ~/.config/marketing-agent-kit/.env "
              "(see connections/elevenlabs-api.md)")
 

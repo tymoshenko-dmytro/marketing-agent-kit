@@ -100,6 +100,7 @@ def main():
     base = Path(os.path.expanduser(a.out))
     out = base / "shots"
     out.mkdir(parents=True, exist_ok=True)
+    B.keep_private(base)
     url = a.url or (base / "last_url.txt").read_text().strip()
     pfx = int(a.prefix)
 

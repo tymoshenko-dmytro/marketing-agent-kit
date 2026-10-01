@@ -48,10 +48,10 @@ A date in the file name means the name changes when the file is re-rendered, and
 So the catalogue does **not** join on the file name. It has an immutable `id`:
 
 ```
-id = <type>_<topic>_<voice>          motion_hr-interviews_female
+id = <type>_<topic>_<lang>_<aspect>_<voice>          motion_hr-interviews_en_16x9_female
 ```
 
-It survives re-renders, new dates, new versions and new lengths. `file` is the human-facing name; `id` is what the numbers hang on. When you name the ad in the ad account, put the `id` in it.
+It is the name without length, date and version, so it survives re-renders, new dates, new versions and new lengths. Language and frame stay in it: an EN and an ES cut, or a 16x9 and a 9x16 cut, run as separate ads with separate numbers. `file` is the human-facing name; `id` is what the numbers hang on. When you name the ad in the ad account, put the `id` in it.
 
 ## Other assets
 

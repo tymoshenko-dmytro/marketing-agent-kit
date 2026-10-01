@@ -58,15 +58,22 @@ STRIPE_AGENT_KEY=            # optional: restricted key with the Agent tag, Read
 
 
 # ------------------------------------------------------------------ keys ------
+def env_value(raw: str) -> str:
+    """The value of KEY=value. Every script in the kit reads the keys file with this
+    same rule: drop an inline comment (a # at the start or after a space), then quotes.
+    The template puts a comment after every key, so a key typed in front of it must
+    not swallow the comment."""
+    return re.split(r"(?:^|\s)#", raw.strip(), maxsplit=1)[0].strip().strip('"').strip("'")
+
+
 def read_env() -> dict:
     vals = {}
     if ENV.exists():
         for line in ENV.read_text().splitlines():
-            line = line.split(" #")[0].strip() if " #" in line else line.strip()
-            if not line or line.startswith("#") or "=" not in line:
+            k, sep, v = line.strip().partition("=")
+            if not sep or k.startswith("#"):
                 continue
-            k, _, v = line.partition("=")
-            v = v.strip().strip('"').strip("'")
+            v = env_value(v)
             if v:
                 vals[k.strip()] = v
     for k in list(vals) + ["PARALLEL_API_KEY", "SEARCHAPI_KEY", "AHREFS_MCP_KEY", "AHREFS_API_KEY",
@@ -319,7 +326,13 @@ def cmd_mcp(a) -> None:
         shown += ["--transport", "http", a.name, s["url"]]
         key = vals.get(s.get("key", ""))
         use_key = key and not s.get("oauth_only") and not a.oauth and not (s.get("prefer_oauth") and not a.key)
-        if use_key:
+        if use_key and a.scope == "project":
+            # project scope writes .mcp.json into the repository, where it gets committed:
+            # store a reference that Claude Code fills from the environment, never the key
+            ref = s["header"].format("${" + s["key"] + "}")
+            cmd += ["--header", ref]
+            shown += ["--header", ref]
+        elif use_key:
             cmd += ["--header", s["header"].format(key)]
             shown += ["--header", s["header"].format(f"<{s['key']} from the keys file, {len(key)} chars>")]
         elif not s.get("oauth") and not s.get("oauth_only") and not s.get("optional_key"):
@@ -340,6 +353,10 @@ def cmd_mcp(a) -> None:
     if out.returncode == 0:
         if "stdio" not in s and not ("--header" in cmd):
             print("next: in Claude Code run /mcp → select the server → Authenticate (a browser opens)")
+        if a.scope == "project" and "--header" in cmd:
+            print(f"the key is not in .mcp.json: Claude Code reads ${{{s['key']}}} from the environment it "
+                  f"starts in. Each teammate exports their own {s['key']} in their shell profile — or use "
+                  "--scope local to keep the server to yourself.")
         print("restart the session (or the desktop app) so Claude picks the server up")
 
 
@@ -354,7 +371,8 @@ def main() -> None:
     m.add_argument("action", choices=["list", "add"])
     m.add_argument("name", nargs="?")
     m.add_argument("--scope", default="user", choices=["user", "project", "local"],
-                   help="user = every project (default; the desktop app reads it)")
+                   help="user = every project (default; the desktop app reads it). "
+                        "project = .mcp.json in the repo, keys written as ${VAR} references")
     m.add_argument("--oauth", action="store_true", help="sign in with OAuth instead of sending the key")
     m.add_argument("--key", action="store_true", help="use the key even where OAuth is recommended (Stripe)")
     m.add_argument("--dry-run", action="store_true", help="print the command, change nothing")

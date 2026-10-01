@@ -53,11 +53,11 @@ Uploads are resumable and go straight from disk to Google. Re-uploading a name t
 
 ## The catalogue
 
-A CSV is the source of truth — in the repo, diffable, survives a storage accident. The Sheet, if configured, is a publication of it: one tab per video type, overwritten wholesale on every run.
+A CSV is the source of truth — in the repo, diffable, survives a storage accident. One CSV holds every type and language: each run replaces the rows of its batch, keeps everything else, and marks rows whose files the sweep retired as `retired`. The Sheet, if configured, is a publication of it: one tab per video type, overwritten wholesale on every run.
 
 | Group | Columns |
 |---|---|
 | core, every type | `id` `file` `created` `type` `topic` `lang` `aspect` `voice` `version` `duration_s` `status` `link` `poster` `notes` |
 | what the type carries | declared in the manifest's `extras`, e.g. `headline` `sub` `cta` `caption` `voice_id` `audience` |
 
-`id` is the join key and never changes. Numbers that need to live next to the creatives (spend, CTR, CPA) belong in the CSV, pulled from the ad account and joined on `id` — anything typed into the Sheet by hand is gone on the next run.
+`id` (`<type>_<topic>_<lang>_<aspect>_<voice>`) is the join key and never changes. Numbers that need to live next to the creatives (spend, CTR, CPA) belong in the CSV as extra columns, pulled from the ad account and joined on `id`; the publisher keeps columns it doesn't own. Anything typed into the Sheet by hand is gone on the next run.

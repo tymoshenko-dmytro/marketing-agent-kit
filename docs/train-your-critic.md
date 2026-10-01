@@ -46,7 +46,7 @@ Copy `agents/copy-critic.md` and replace the sections with your rules. Keep:
 - "the rewrite, not advice about the rewrite";
 - "don't soften".
 
-Put it in `~/.claude/agents/` (all projects) or `<project>/.claude/agents/` (one project). Give it a name you'll remember — naming it after the person whose taste it encodes makes it easy to call: "run Dima on these cards".
+Put it in `~/.claude/agents/` (all projects) or `<project>/.claude/agents/` (one project). Give it a short name you'll remember and call it by that name: "run copy-critic on these cards".
 
 ## Step 4 — calibrate
 

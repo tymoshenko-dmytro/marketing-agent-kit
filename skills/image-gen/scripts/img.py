@@ -22,6 +22,7 @@ import json
 import mimetypes
 import os
 import pathlib
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -44,8 +45,9 @@ def load_api_key() -> str:
     if ENV_FILE.exists():
         for line in ENV_FILE.read_text().splitlines():
             k, _, v = line.strip().partition("=")
-            if k.strip() == "OPENAI_API_KEY" and v.strip():
-                return v.strip().strip('"').strip("'")
+            v = re.split(r"(?:^|\s)#", v.strip(), maxsplit=1)[0].strip().strip('"').strip("'")   # same rule as kit.py
+            if k.strip() == "OPENAI_API_KEY" and v:
+                return v
     sys.exit(
         "error: no OpenAI API key found.\n"
         f"  set $OPENAI_API_KEY, or add OPENAI_API_KEY=... to {ENV_FILE} (chmod 600).\n"

@@ -14,7 +14,7 @@ loudness, so a dB offset between buses in the mix would not mean what it says.
 
 Key: env ELEVENLABS_API_KEY -> ~/.config/marketing-agent-kit/.env
 """
-import argparse, difflib, json, os, pathlib, re, shutil, subprocess, sys, urllib.error, urllib.request
+import argparse, difflib, json, os, pathlib, re, shutil, subprocess, sys, unicodedata, urllib.error, urllib.request
 
 def key():
     """ELEVENLABS_API_KEY: env var first, then the kit's keys file (connections/elevenlabs-api.md)."""
@@ -23,8 +23,8 @@ def key():
     if p.exists():
         for line in p.read_text().splitlines():
             k, _, v = line.strip().partition("=")
-            if k.strip() == "ELEVENLABS_API_KEY" and v.split(" #")[0].strip():
-                return v.split(" #")[0].strip().strip('"').strip("'")
+            v = re.split(r"(?:^|\s)#", v.strip(), maxsplit=1)[0].strip().strip('"').strip("'")   # same rule as kit.py
+            if k.strip() == "ELEVENLABS_API_KEY" and v: return v
     sys.exit("ELEVENLABS_API_KEY not found: add it to ~/.config/marketing-agent-kit/.env "
              "(see connections/elevenlabs-api.md)")
 
@@ -61,10 +61,12 @@ NUM = {"zero":"0","one":"1","two":"2","three":"3","four":"4","five":"5","six":"6
 def canon(t):
     """Whisper reliably rewrites correct audio three ways: numbers as digits,
     currency words as symbols, and no space at a sentence break. Normalise those
-    and nothing else - a gate with false positives gets switched off."""
-    t = t.lower().replace("’","'").replace("'","")
+    and nothing else - a gate with false positives gets switched off.
+    Letters, marks and digits of every script survive: an ASCII-only filter empties a
+    Cyrillic line, and two empty strings compare as a perfect match."""
+    t = unicodedata.normalize("NFKC", t).lower().replace("’","'").replace("ʼ","'").replace("'","")
     t = re.sub(r"\$\s*([\d,.]+)", r"\1 dollars", t)
-    t = re.sub(r"[^a-z0-9À-ɏ ]", " ", t)
+    t = "".join(ch if ch == " " or unicodedata.category(ch)[0] in "LMN" else " " for ch in t)
     return "".join(NUM.get(w, w) for w in t.split())
 
 def main():
@@ -112,7 +114,9 @@ def main():
             if not txt.exists():
                 transcribe(wav, out)
             heard = txt.read_text().strip() if txt.exists() else ""
-            r = difflib.SequenceMatcher(None, canon(row["text"]), canon(heard)).ratio()
+            want = canon(row["text"])
+            # a line with nothing left to compare is unverified, not a pass
+            r = difflib.SequenceMatcher(None, want, canon(heard)).ratio() if want else 0.0
             row["heard"], row["match"] = heard, round(r, 3)
             if r < 0.90: flagged.append((L["tag"], row["text"], heard, round(r, 2)))
         res.append(row)

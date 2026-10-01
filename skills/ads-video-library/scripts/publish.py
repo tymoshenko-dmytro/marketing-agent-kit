@@ -76,6 +76,20 @@ def canonical(item, mtype, lang):
             f'{round(item["duration_s"])}s_{item["created"]}_v{item["version"]}.mp4')
 
 
+def item_id(mtype, topic, lang, aspect, voice):
+    """The join key: the name without length, date and version. Language and frame are
+    in it because an EN and an ES cut, or a 16x9 and a 9x16 cut, run as separate ads
+    with separate numbers."""
+    return f"{mtype}_{topic}_{lang}_{aspect}_{voice}"
+
+
+def month_of(created):
+    try:
+        return MONTHS[int(str(created)[5:7]) - 1]
+    except (ValueError, IndexError):
+        return None
+
+
 def read_manifest(path):
     m = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
     for k in ("type", "label", "lang", "items"):
@@ -112,7 +126,7 @@ def plan(m, old):
     rows, seen_id, seen_name = [], {}, {}
     for it in m["items"]:
         it["duration_s"] = round(frames.duration(it["src"]), 2)
-        cid = f'{m["type"]}_{it["topic"]}_{it["voice"]}'
+        cid = item_id(m["type"], it["topic"], m["lang"], it["aspect"], it["voice"])
         it["created"] = old.get(cid, {}).get("created") or it["created"]
         name = canonical(it, m["type"], m["lang"])
         # Two items answering to one id or one name is a silent overwrite: two renders
@@ -124,6 +138,7 @@ def plan(m, old):
             sys.exit(f"  two items produce the name {name!r}")
         seen_id[cid], seen_name[name] = it["topic"], it["topic"]
         rows.append({
+            **old.get(cid, {}),          # columns the publisher doesn't own (spend, CTR) survive
             "id": cid, "file": name, "created": it["created"], "type": m["type"],
             "topic": it["topic"], "lang": m["lang"], "aspect": it["aspect"],
             "voice": it["voice"], "version": it["version"],
@@ -138,12 +153,15 @@ def plan(m, old):
 
 
 # ----------------------------------------------------------------- stage ------
-def stage(rows, st, mtype, poster=True, contact=True, bake=False):
-    """Renamed copies + posters + contact sheets in one folder. Only this type's files
-    are cleared from it, so one stage folder can hold several types."""
+def stage(rows, st, mtype, lang, poster=True, contact=True, bake=False):
+    """Renamed copies + posters + contact sheets in one folder. Only this type's files in
+    this language are cleared from it, so one stage folder can hold several types and
+    languages. The name is parsed rather than globbed: type and lang are fields 1 and 3."""
     st.mkdir(parents=True, exist_ok=True)
-    for f in st.glob(f"{mtype}_*"):
-        if f.suffix in (".mp4", ".jpg"):
+    for f in st.iterdir():
+        parts = f.name.split("_")
+        if f.is_file() and f.suffix in (".mp4", ".jpg") and len(parts) > 2 \
+                and parts[0] == mtype and parts[2] == lang:
             f.unlink()
     for r in rows:
         dst = st / r["file"]
@@ -302,9 +320,15 @@ def main():
     cfg = load_config(a.config)
     m = read_manifest(a.manifest)
     cat = pathlib.Path(a.catalog) if a.catalog else None
-    old = {r["id"]: r for r in csv.DictReader(cat.open(encoding="utf-8"))} if cat and cat.exists() else {}
+    old, old_cols = {}, []
+    if cat and cat.exists():
+        with cat.open(encoding="utf-8") as f:
+            rd = csv.DictReader(f)
+            old = {r["id"]: r for r in rd}
+            old_cols = list(rd.fieldnames or [])
     rows = plan(m, old)
     cols = CORE + [c for c in m.get("extras", []) if c not in CORE]
+    csv_cols = cols + [c for c in old_cols if c not in cols]
     label, tab = m["label"], m.get("tab", m["label"])
     lang_folder = cfg["langs"].get(m["lang"], m["lang"].upper())
     st = pathlib.Path(a.stage) if a.stage else pathlib.Path(a.manifest).parent / "dist"
@@ -317,7 +341,7 @@ def main():
             print(f'    {r["_month"]:<10} {r["file"]}   poster @ {at}s')
         return
 
-    stage(rows, st, m["type"], poster=not a.no_poster, contact=not a.no_contact, bake=a.bake_poster)
+    stage(rows, st, m["type"], m["lang"], poster=not a.no_poster, contact=not a.no_contact, bake=a.bake_poster)
 
     H = None
     if cfg["storage"] == "gdrive":
@@ -325,19 +349,36 @@ def main():
     else:
         store_local(cfg, rows, label, lang_folder, st, sweep=not a.no_sweep)
 
+    # One catalogue holds the whole library. The batch replaces its own rows; other
+    # types and languages stay as they are. A row of this type and language whose month
+    # folder was just swept describes a file that is now retired, and says so.
     ordered = sorted(rows, key=lambda r: r["id"])
+    batch_ids, swept, retired = {r["id"] for r in rows}, set() if a.no_sweep else {r["_month"] for r in rows}, 0
+    catalogue = list(ordered)
+    for r in old.values():
+        if r["id"] in batch_ids:
+            continue
+        if r.get("type") == m["type"] and r.get("lang") == m["lang"] and month_of(r.get("created")) in swept \
+                and r.get("status") != "retired":
+            r = {**r, "status": "retired"}
+            retired += 1
+        catalogue.append(r)
+    catalogue.sort(key=lambda r: r["id"])
     if cat:
         with cat.open("w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+            w = csv.DictWriter(f, fieldnames=csv_cols, extrasaction="ignore")
             w.writeheader()
-            w.writerows(ordered)
-        print(f"  {cat}: {len(rows)} row(s)")
+            w.writerows(catalogue)
+        print(f"  {cat}: {len(rows)} row(s) from this batch, {len(catalogue)} in total"
+              + (f", {retired} marked retired" if retired else ""))
 
     if cfg.get("sheet_id") and not a.no_sheet:
         if H is None:
             from gauth import credentials, headers
             H = headers(credentials(cfg.get("credentials"))[0])
-        n, k = push_tab(H, cfg["sheet_id"], tab, cols, ordered)
+        tab_rows = [r for r in catalogue if r.get("type") == m["type"]]
+        tab_cols = [c for c in csv_cols if c in cols or any(r.get(c) for r in tab_rows)]
+        n, k = push_tab(H, cfg["sheet_id"], tab, tab_cols, tab_rows)
         print(f"  sheet tab {tab!r}: {n} rows × {k} columns")
 
     if not a.no_gallery:

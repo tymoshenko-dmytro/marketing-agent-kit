@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import urllib.error
@@ -27,6 +28,20 @@ import urllib.request
 
 DATA = "https://analyticsdata.googleapis.com/v1beta"
 ADMIN = "https://analyticsadmin.googleapis.com/v1beta"
+
+
+def default_property() -> str | None:
+    """GA4_PROPERTY_ID: env var first, then the kit's keys file (see connections/ga4-mcp.md)."""
+    if os.environ.get("GA4_PROPERTY_ID"):
+        return os.environ["GA4_PROPERTY_ID"]
+    envp = pathlib.Path(os.path.expanduser(os.environ.get("MARKETING_KIT_ENV", "~/.config/marketing-agent-kit/.env")))
+    if envp.exists():
+        for line in envp.read_text().splitlines():
+            k, _, v = line.strip().partition("=")
+            v = re.split(r"(?:^|\s)#", v.strip(), maxsplit=1)[0].strip().strip('"').strip("'")   # same rule as kit.py
+            if k.strip() == "GA4_PROPERTY_ID" and v:
+                return v
+    return None
 
 
 def token() -> str:
@@ -93,8 +108,8 @@ def table(data: dict) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("query", nargs="?", help="query JSON or a path to a .json file")
-    ap.add_argument("--property", default=os.environ.get("GA4_PROPERTY_ID"),
-                    help="GA4 property id (digits); default: env GA4_PROPERTY_ID")
+    ap.add_argument("--property", default=default_property(),
+                    help="GA4 property id (digits); default: GA4_PROPERTY_ID from env or the kit's keys file")
     ap.add_argument("--out", help="save the raw JSON response here")
     ap.add_argument("--list-properties", action="store_true")
     a = ap.parse_args()
@@ -110,7 +125,7 @@ def main() -> None:
     if not a.query:
         ap.error("query is required")
     if not a.property:
-        ap.error("no property: pass --property or set GA4_PROPERTY_ID (find it with --list-properties)")
+        ap.error("no property: pass --property or set GA4_PROPERTY_ID in ~/.config/marketing-agent-kit/.env (find it with --list-properties)")
     raw = pathlib.Path(a.query).read_text() if a.query.endswith(".json") and pathlib.Path(a.query).exists() else a.query
     body = to_rest(json.loads(raw))
     data = call(f"{DATA}/properties/{str(a.property).removeprefix('properties/')}:runReport", body)
