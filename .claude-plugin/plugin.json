@@ -1,0 +1,22 @@
+{
+  "name": "marketing-agent-kit",
+  "displayName": "Marketing Agent Kit",
+  "version": "0.1.0",
+  "description": "Skills, a copy critic and connection guides for marketing work in Claude Code: competitor research, ad libraries, SEO, GA4, image generation, an ad-video library with review pages, plain copy.",
+  "author": {
+    "name": "Dmytro Tymoshenko",
+    "url": "https://www.linkedin.com/in/tymoshenko-dmytro"
+  },
+  "license": "MIT",
+  "keywords": [
+    "marketing",
+    "growth",
+    "competitor-research",
+    "seo",
+    "ads",
+    "ga4",
+    "copywriting"
+  ],
+  "homepage": "https://github.com/tymoshenko-dmytro/marketing-agent-kit",
+  "repository": "https://github.com/tymoshenko-dmytro/marketing-agent-kit"
+}

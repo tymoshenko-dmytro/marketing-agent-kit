@@ -1,0 +1,12 @@
+{
+  "storage": "local",
+  "local_root": "~/Ads Video Library",
+  "langs": {"sv": "SV 🇸🇪"},
+
+  "_gdrive_example": {
+    "storage": "gdrive",
+    "drive_id": "<shared drive id — the part after /folders/ in its URL>",
+    "sheet_id": "<optional catalogue spreadsheet id — the part after /d/ in its URL>",
+    "credentials": {"service_account": "~/.config/marketing-agent-kit/google-sa.json"}
+  }
+}

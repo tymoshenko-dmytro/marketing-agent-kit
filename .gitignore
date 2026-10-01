@@ -1,0 +1,24 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*-sa.json
+google-*.json
+client_secret*.json
+library.json
+
+# Research and production outputs (they contain client and competitor data)
+raw/
+dist/
+renders/
+catalog*.csv
+/competitor-*/
+brag-output*/
+
+# Python / OS
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
